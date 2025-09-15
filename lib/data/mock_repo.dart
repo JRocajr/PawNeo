@@ -15,7 +15,7 @@ class MockRepo {
     completedLoans: 12,
   );
 
-  static final loans = <Loan>[
+  static const List<Loan> loans = <Loan>[
     Loan(
       id: 'l1',
       title: 'Medical Treatment for My Son',
@@ -66,9 +66,9 @@ class MockRepo {
     ),
   ];
 
-  static final investments = <Investment>[
-    const Investment(loanId: 'l2', amount: 500, monthsLeft: 12),
-    const Investment(loanId: 'l3', amount: 200, monthsLeft: 18),
+  static const List<Investment> investments = <Investment>[
+    Investment(loanId: 'l2', amount: 500, monthsLeft: 12),
+    Investment(loanId: 'l3', amount: 200, monthsLeft: 18),
   ];
 
   /// Helpers

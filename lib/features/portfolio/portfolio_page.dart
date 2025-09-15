@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../core/app_theme.dart';
 import '../../data/mock_repo.dart';
 import '../../data/models/investment.dart';
+import '../../widgets/stat_card.dart';
 
 class PortfolioPage extends StatelessWidget {
   const PortfolioPage({super.key});
@@ -10,48 +12,226 @@ class PortfolioPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final invested = MockRepo.portfolioTotalInvested();
     final expected = MockRepo.portfolioExpectedProfit();
+    final investments = MockRepo.investments;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Portfolio')),
-      body: ListView(
-        children: [
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(children: [
-              Expanded(
-                  child: _TopStat(
-                      title: 'Total Invested',
-                      value: money(invested),
-                      icon: Icons.attach_money_rounded)),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: _TopStat(
-                      title: 'Expected Profit',
-                      value: money(expected),
-                      icon: Icons.trending_up_rounded)),
-            ]),
+      appBar: AppBar(
+        title: const Text('Portfolio'),
+        actions: [
+          IconButton(
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Download statement coming soon.')),
+            ),
+            icon: const Icon(Icons.file_download_outlined),
+          )
+        ],
+      ),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PortfolioHero(invested: invested, expected: expected),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Performance overview',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(letterSpacing: -0.2),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: StatCard(
+                          title: 'Total invested',
+                          value: money(invested),
+                          subtitle: 'Across ${investments.length} active assets',
+                          badge: '+8.5% YoY',
+                          icon: Icons.attach_money_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: StatCard(
+                          title: 'Expected profit',
+                          value: money(expected),
+                          subtitle: 'Average APR 6.1%',
+                          badge: '+3.4% this month',
+                          icon: Icons.trending_up_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Active investments',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(letterSpacing: -0.2),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: _TabHeader(),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final inv = investments[index];
+                final loan = MockRepo.byId(inv.loanId);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  child: _InvestmentCard(
+                    inv: inv,
+                    title: loan.title,
+                    interest: loan.interest,
+                  ),
+                );
+              },
+              childCount: investments.length,
+            ),
           ),
-          ...MockRepo.investments
-              .map((inv) => _InvestmentTile(inv: inv))
-              .toList(),
-          const SizedBox(height: 24),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
     );
   }
 }
 
-class _TopStat extends StatelessWidget {
-  final String title;
+class _PortfolioHero extends StatelessWidget {
+  final double invested;
+  final double expected;
+  const _PortfolioHero({required this.invested, required this.expected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppGradients.hero,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppShadows.primary,
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Net worth',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.white70),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'Auto-reinvest on',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            money(invested + expected + 420),
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: Colors.white,
+                  letterSpacing: -0.6,
+                  fontSize: 36,
+                ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroTile(
+                  label: 'Invested capital',
+                  value: money(invested),
+                  badge: '+4.2% vs last month',
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _HeroTile(
+                  label: 'Expected profit',
+                  value: money(expected),
+                  badge: 'Avg. 180 day term',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroTile extends StatelessWidget {
+  final String label;
   final String value;
-  final IconData icon;
-  const _TopStat(
-      {required this.title, required this.value, required this.icon});
+  final String badge;
+  const _HeroTile({required this.label, required this.value, required this.badge});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Colors.white70),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(color: Colors.white, letterSpacing: -0.3),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            badge,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvestmentCard extends StatelessWidget {
+  final Investment inv;
+  final String title;
+  final double interest;
+  const _InvestmentCard({required this.inv, required this.title, required this.interest});
 
   @override
   Widget build(BuildContext context) {
@@ -59,123 +239,119 @@ class _TopStat extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [BoxShadow(color: Colors.transparent)],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F1B2B5B), blurRadius: 24, offset: Offset(0, 18)),
+        ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Row(children: [
-        Container(
-          decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, color: cs.onPrimaryContainer),
-        ),
-        const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text(title, style: const TextStyle(color: Colors.black54)),
-        ]),
-      ]),
-    );
-  }
-}
-
-class _TabHeader extends StatelessWidget {
-  const _TabHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(child: _PrimaryTab(label: 'My Investments', selected: true)),
-        Expanded(child: _PrimaryTab(label: 'My Loans', selected: false)),
-      ],
-    );
-  }
-}
-
-class _PrimaryTab extends StatelessWidget {
-  final String label;
-  final bool selected;
-  const _PrimaryTab({required this.label, required this.selected});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 44,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: selected ? cs.primary : const Color(0xFFEFF2F8),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              color: selected ? cs.onPrimary : Colors.black87,
-              fontWeight: FontWeight.w700)),
-    );
-  }
-}
-
-class _InvestmentTile extends StatelessWidget {
-  final Investment inv;
-  const _InvestmentTile({required this.inv});
-
-  @override
-  Widget build(BuildContext context) {
-    final loan = MockRepo.byId(inv.loanId);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
               Expanded(
-                child: Text(loan.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
+                child: Text(
+                  title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(18),
+                  color: cs.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Text('ACTIVE',
-                    style: TextStyle(
-                        color: Colors.green.shade700,
-                        fontWeight: FontWeight.w700)),
+                child: Text(
+                  '${(interest * 100).toStringAsFixed(0)}% APR',
+                  style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+                ),
               ),
-            ]),
-            const SizedBox(height: 4),
-            Text('by ${loan.borrowerName}',
-                style: const TextStyle(color: Colors.black54)),
-            const SizedBox(height: 12),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              _kv('Invested', money(inv.amount)),
-              _kv('Expected Return', money(inv.amount * (1 + loan.interest))),
-              _kv('Time Left', '${inv.monthsLeft} months'),
-            ]),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Invested ${money(inv.amount)} / ${inv.monthsLeft} months left',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Colors.black54),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _Trend(
+                  label: 'Projected return',
+                  value: money(inv.amount * (1 + interest)),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _Trend(
+                  label: 'Profit to date',
+                  value: money(inv.amount * interest * 0.35),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Icon(Icons.timeline_rounded, color: cs.primary, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'Auto repayments weekly',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Export schedule coming soon.')),
+                ),
+                child: const Text('Download schedule'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _kv(String k, String v) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(k, style: const TextStyle(color: Colors.black54)),
-      const SizedBox(height: 2),
-      Text(v, style: const TextStyle(fontWeight: FontWeight.w700)),
-    ]);
+class _Trend extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Trend({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: Colors.black54, letterSpacing: 0.3),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 }
