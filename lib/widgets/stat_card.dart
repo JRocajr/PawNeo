@@ -28,7 +28,10 @@ class StatCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
-          BoxShadow(color: Color(0x0F1B2B5B), blurRadius: 30, offset: Offset(0, 22)),
+          BoxShadow(
+              color: Color(0x0F1B2B5B),
+              blurRadius: 30,
+              offset: Offset(0, 22)),
         ],
         border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
       ),
@@ -74,7 +77,8 @@ class StatCard extends StatelessWidget {
           if (badge != null) ...[
             const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: accentColor.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(14),

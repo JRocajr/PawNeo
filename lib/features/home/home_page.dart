@@ -2,51 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../data/mock_repo.dart';
-import '../../widgets/loan_card.dart';
-import '../../data/models/loan.dart';
+import '../../widgets/stat_card.dart';
 
-enum _Filter { all, active, funded }
-
-enum _Sort { newest, amount, interest }
-
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  _Filter filter = _Filter.all;
-  _Sort sort = _Sort.newest;
-
-  List<Loan> _apply(List<Loan> input) {
-    var list = input;
-    if (filter == _Filter.active) {
-      list = list.where((l) => !l.isFunded).toList();
-    }
-    if (filter == _Filter.funded) {
-      list = list.where((l) => l.isFunded).toList();
-    }
-
-    switch (sort) {
-      case _Sort.newest:
-        list = List.of(list.reversed);
-        break;
-      case _Sort.amount:
-        list.sort((a, b) => b.requested.compareTo(a.requested));
-        break;
-      case _Sort.interest:
-        list.sort((a, b) => b.interest.compareTo(a.interest));
-        break;
-    }
-    return list;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final loans = _apply(MockRepo.loans);
     final user = MockRepo.user;
+    final totalCollateral = MockRepo.totalCollateralValue();
+    final totalEarnings = MockRepo.totalEarnings();
+    final pending = MockRepo.pendingItems();
+    final recentEarnings = MockRepo.earnings.take(3).toList();
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -64,55 +31,110 @@ class _HomePageState extends State<HomePage> {
               children: [
                 _TopBar(name: user.name),
                 const SizedBox(height: 24),
-                _HeroCard(onAddFunds: _showComingSoon),
-                const SizedBox(height: 20),
-                _QuickActions(onCreate: _openCreate, onAddFunds: _showComingSoon),
-                const SizedBox(height: 24),
-                _FilterRow(
-                  filter: filter,
-                  onFilterChanged: (value) => setState(() => filter = value),
-                  sort: sort,
-                  onSortChanged: (value) => setState(() => sort = value),
+                _HeroCard(
+                  totalCollateral: totalCollateral,
+                  totalEarnings: totalEarnings,
+                  pendingEarnings: user.pendingEarnings,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
+                _QuickActions(
+                  onAddItem: () => _snack(context, 'Navigate to Add Item tab'),
+                  onExplore: () => _snack(context, 'Navigate to Portfolios tab'),
+                ),
+                const SizedBox(height: 24),
                 Text(
-                  'Discover opportunities',
+                  'Your collateral at a glance',
                   style: Theme.of(context)
                       .textTheme
                       .titleLarge
                       ?.copyWith(letterSpacing: -0.2),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Curated loans from verified borrowers to diversify your impact.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StatCard(
+                        title: 'Active items',
+                        value: '${user.activeItems}',
+                        subtitle: 'Working as collateral',
+                        icon: Icons.verified_rounded,
+                        accent: Colors.green.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: StatCard(
+                        title: 'Portfolios',
+                        value: '${user.portfoliosJoined}',
+                        subtitle: 'Backing loan pools',
+                        icon: Icons.pie_chart_rounded,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StatCard(
+                        title: 'Total earned',
+                        value: money(totalEarnings),
+                        subtitle: 'Lifetime yield',
+                        icon: Icons.trending_up_rounded,
+                        accent: Colors.teal.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: StatCard(
+                        title: 'Pending',
+                        value: money(user.pendingEarnings),
+                        subtitle: 'Next payout cycle',
+                        icon: Icons.schedule_rounded,
+                        accent: Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                if (pending.isNotEmpty) ...[
+                  const SizedBox(height: 28),
+                  Text(
+                    'Pending actions',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(letterSpacing: -0.2),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Items waiting for your attention',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  ...pending.map((item) => _PendingItemTile(item: item)),
+                ],
+                const SizedBox(height: 28),
+                Text(
+                  'Recent earnings',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(letterSpacing: -0.2),
+                ),
+                const SizedBox(height: 12),
+                ...recentEarnings.map((e) => _EarningTile(earning: e)),
+                const SizedBox(height: 120),
               ],
             ),
           ),
         ),
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => LoanCard(loan: loans[index]),
-            childCount: loans.length,
-          ),
-        ),
-        const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
     );
   }
 
-  void _openCreate() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Loan creation flow coming soon.')),
-    );
-  }
-
-  void _showComingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Feature coming soon.')),
-    );
+  void _snack(BuildContext context, String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
@@ -158,21 +180,23 @@ class _TopBar extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
             boxShadow: const [
-              BoxShadow(color: Color(0x14283B7D), blurRadius: 20, offset: Offset(0, 10)),
+              BoxShadow(
+                  color: Color(0x14283B7D),
+                  blurRadius: 20,
+                  offset: Offset(0, 10)),
             ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.shield_moon, color: cs.primary, size: 20),
+              Icon(Icons.verified_user_rounded,
+                  color: Colors.green.shade600, size: 20),
               const SizedBox(width: 6),
               Text(
-                'Verified',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(color: cs.primary, letterSpacing: 0.4),
-              )
+                'KYC OK',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Colors.green.shade700, letterSpacing: 0.4),
+              ),
             ],
           ),
         ),
@@ -182,13 +206,17 @@ class _TopBar extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  final VoidCallback onAddFunds;
-  const _HeroCard({required this.onAddFunds});
+  final double totalCollateral;
+  final double totalEarnings;
+  final double pendingEarnings;
+  const _HeroCard({
+    required this.totalCollateral,
+    required this.totalEarnings,
+    required this.pendingEarnings,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final invested = MockRepo.portfolioTotalInvested();
-    final expected = MockRepo.portfolioExpectedProfit();
     return Container(
       decoration: BoxDecoration(
         gradient: AppGradients.hero,
@@ -203,7 +231,7 @@ class _HeroCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Your wallet balance',
+                  'Total collateral value',
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
@@ -215,13 +243,16 @@ class _HeroCard extends StatelessWidget {
                   color: Colors.white.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(Icons.visibility_rounded, color: Colors.white, size: 18),
+                    Icon(Icons.visibility_rounded,
+                        color: Colors.white, size: 18),
                     SizedBox(width: 4),
-                    Text('Hide', style: TextStyle(color: Colors.white)),
+                    Text('Hide',
+                        style: TextStyle(color: Colors.white, fontSize: 13)),
                   ],
                 ),
               ),
@@ -229,7 +260,7 @@ class _HeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            money(invested + 820),
+            money(totalCollateral),
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: Colors.white,
                   fontSize: 34,
@@ -241,32 +272,23 @@ class _HeroCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _HeroStat(
-                  label: 'Invested',
-                  value: money(invested),
-                  trending: '+12% MoM',
+                  label: 'Total earned',
+                  value: money(totalEarnings),
+                  trending: '+${pct(totalEarnings / totalCollateral)} ROI',
                 ),
               ),
-              Container(width: 1, height: 48, color: Colors.white.withOpacity(0.14)),
+              Container(
+                  width: 1,
+                  height: 48,
+                  color: Colors.white.withOpacity(0.14)),
               Expanded(
                 child: _HeroStat(
-                  label: 'Expected profit',
-                  value: money(expected),
-                  trending: '+3.4% APR',
+                  label: 'Pending payout',
+                  value: money(pendingEarnings),
+                  trending: 'Next cycle: Apr 1',
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 18),
-          FilledButton.tonal(
-            onPressed: onAddFunds,
-            style: FilledButton.styleFrom(
-              foregroundColor: Colors.black,
-              backgroundColor: Colors.white,
-            ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Add funds'),
-            ),
           ),
         ],
       ),
@@ -278,7 +300,8 @@ class _HeroStat extends StatelessWidget {
   final String label;
   final String value;
   final String trending;
-  const _HeroStat({required this.label, required this.value, required this.trending});
+  const _HeroStat(
+      {required this.label, required this.value, required this.trending});
 
   @override
   Widget build(BuildContext context) {
@@ -287,25 +310,21 @@ class _HeroStat extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style:
-                Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
-          ),
+          Text(label,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Colors.white70)),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(color: Colors.white, letterSpacing: -0.2),
-          ),
+          Text(value,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.white, letterSpacing: -0.2)),
           const SizedBox(height: 4),
-          Text(
-            trending,
-            style:
-                Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70),
-          ),
+          Text(trending,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Colors.white70)),
         ],
       ),
     );
@@ -313,9 +332,9 @@ class _HeroStat extends StatelessWidget {
 }
 
 class _QuickActions extends StatelessWidget {
-  final VoidCallback onCreate;
-  final VoidCallback onAddFunds;
-  const _QuickActions({required this.onCreate, required this.onAddFunds});
+  final VoidCallback onAddItem;
+  final VoidCallback onExplore;
+  const _QuickActions({required this.onAddItem, required this.onExplore});
 
   @override
   Widget build(BuildContext context) {
@@ -323,20 +342,21 @@ class _QuickActions extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: FilledButton(
-            onPressed: onCreate,
-            child: const Padding(
+          child: FilledButton.icon(
+            onPressed: onAddItem,
+            icon: const Icon(Icons.add_rounded),
+            label: const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Create loan'),
+              child: Text('Add item'),
             ),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: onAddFunds,
-            icon: Icon(Icons.qr_code_scanner_rounded, color: cs.primary),
-            label: const Text('Scan ID'),
+            onPressed: onExplore,
+            icon: Icon(Icons.explore_rounded, color: cs.primary),
+            label: const Text('Portfolios'),
           ),
         ),
       ],
@@ -344,108 +364,125 @@ class _QuickActions extends StatelessWidget {
   }
 }
 
-class _FilterRow extends StatelessWidget {
-  final _Filter filter;
-  final ValueChanged<_Filter> onFilterChanged;
-  final _Sort sort;
-  final ValueChanged<_Sort> onSortChanged;
-  const _FilterRow({
-    required this.filter,
-    required this.onFilterChanged,
-    required this.sort,
-    required this.onSortChanged,
-  });
+class _PendingItemTile extends StatelessWidget {
+  final dynamic item;
+  const _PendingItemTile({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.orange.shade200),
         boxShadow: const [
-          BoxShadow(color: Color(0x0F23314F), blurRadius: 24, offset: Offset(0, 12)),
+          BoxShadow(
+              color: Color(0x0F1B2B5B),
+              blurRadius: 16,
+              offset: Offset(0, 8)),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: _Filter.values
-                      .map(
-                        (value) => ChoiceChip(
-                          label: Text(_label(value)),
-                          selected: filter == value,
-                          onSelected: (_) => onFilterChanged(value),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              PopupMenuButton<_Sort>(
-                onSelected: onSortChanged,
-                position: PopupMenuPosition.under,
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: _Sort.newest, child: Text('Newest first')),
-                  PopupMenuItem(value: _Sort.amount, child: Text('Highest amount')),
-                  PopupMenuItem(value: _Sort.interest, child: Text('Highest interest')),
-                ],
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.tune_rounded, color: cs.primary, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        _sortLabel(sort),
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelLarge
-                            ?.copyWith(color: cs.primary),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(item.category.icon,
+                color: Colors.orange.shade700, size: 22),
           ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.name,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87)),
+                const SizedBox(height: 4),
+                Text(item.status.label,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          Text(money(item.estimatedValue),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
-
-  String _label(_Filter value) {
-    switch (value) {
-      case _Filter.all:
-        return 'All loans';
-      case _Filter.active:
-        return 'Active';
-      case _Filter.funded:
-        return 'Funded';
-    }
-  }
-
-  String _sortLabel(_Sort value) {
-    switch (value) {
-      case _Sort.newest:
-        return 'Newest';
-      case _Sort.amount:
-        return 'Amount';
-      case _Sort.interest:
-        return 'Interest';
-    }
-  }
 }
 
+class _EarningTile extends StatelessWidget {
+  final dynamic earning;
+  const _EarningTile({required this.earning});
 
+  @override
+  Widget build(BuildContext context) {
+    final months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A1B2B5B),
+              blurRadius: 16,
+              offset: Offset(0, 8)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.teal.shade50,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child:
+                Icon(Icons.trending_up_rounded, color: Colors.teal.shade700, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(earning.portfolioName,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700, color: Colors.black87),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text(
+                    '${months[earning.date.month]} ${earning.date.year}',
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          Text('+${money(earning.amount)}',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700, color: Colors.teal.shade700)),
+        ],
+      ),
+    );
+  }
+}

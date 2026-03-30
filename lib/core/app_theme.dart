@@ -73,7 +73,7 @@ class AppTheme {
         elevation: 0,
         color: Colors.white,
         surfaceTintColor: Colors.transparent,
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         shadowColor: Colors.black.withOpacity(0.06),
       ),
@@ -82,17 +82,21 @@ class AppTheme {
           backgroundColor: _royal,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          textStyle:
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: _royal,
           side: const BorderSide(color: Color(0xFFCBD3FF)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle:
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
@@ -118,7 +122,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: _royal),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       ),
       listTileTheme: ListTileThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -185,6 +190,12 @@ class AppGradients {
     end: Alignment.bottomRight,
     colors: [Color(0xFF3AC8FF), Color(0xFF7DF5D0)],
   );
+
+  static const LinearGradient accent = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF4659FF), Color(0xFF1FC8FF)],
+  );
 }
 
 class AppShadows {
@@ -201,6 +212,12 @@ class AppShadows {
 
 String money(num n) {
   final value = n.toStringAsFixed(0);
-  return '\$$value';
+  final buffer = StringBuffer();
+  for (var i = 0; i < value.length; i++) {
+    if (i > 0 && (value.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(value[i]);
+  }
+  return '\$$buffer';
 }
 
+String pct(double n) => '${(n * 100).toStringAsFixed(1)}%';

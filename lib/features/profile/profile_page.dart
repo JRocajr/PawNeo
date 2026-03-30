@@ -6,7 +6,8 @@ import '../../data/models/user.dart';
 import '../../widgets/stat_card.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  final VoidCallback onLogout;
+  const ProfilePage({super.key, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
@@ -18,27 +19,31 @@ class ProfilePage extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => _showSnackbar(context, 'Settings coming soon.'),
+            onPressed: () => _snack(context, 'Settings coming soon.'),
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: [
           _ProfileHeader(user: user),
           const SizedBox(height: 20),
           _StatsSection(user: user),
           const SizedBox(height: 24),
-          _MembershipCard(user: user),
+          _KycCard(user: user),
           const SizedBox(height: 24),
-          _SettingsGroup(onTap: (label) => _showSnackbar(context, '$label coming soon.')),
+          _SettingsGroup(
+            onTap: (label) => _snack(context, '$label coming soon.'),
+            onLogout: onLogout,
+          ),
         ],
       ),
     );
   }
 
-  void _showSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  void _snack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -67,26 +72,26 @@ class _ProfileHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    user.name,
-                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  ),
+                  Text(user.name,
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
-                  Text(user.email, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black54)),
-                  const SizedBox(height: 12),
+                  Text(user.email,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: Colors.black54)),
+                  const SizedBox(height: 4),
+                  Text(user.phone,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: Colors.black45)),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                      const Icon(Icons.location_on_outlined,
+                          size: 16, color: Colors.black45),
                       const SizedBox(width: 4),
-                      Text(user.rating.toStringAsFixed(1),
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.location_on_outlined, size: 18, color: Colors.black45),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(user.location,
-                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
-                      ),
+                      Text(user.location,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: Colors.black54)),
                     ],
                   ),
                 ],
@@ -111,19 +116,20 @@ class _StatsSection extends StatelessWidget {
           children: [
             Expanded(
               child: StatCard(
-                title: 'Total invested',
-                value: money(user.totalInvested),
-                subtitle: 'Across ${user.activeInvestments} active loans',
-                icon: Icons.attach_money_rounded,
+                title: 'Collateral value',
+                value: money(user.totalCollateralValue),
+                subtitle: '${user.activeItems} active items',
+                icon: Icons.shield_rounded,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: StatCard(
                 title: 'Total earned',
-                value: money(user.totalEarned),
-                subtitle: 'Distributed returns',
+                value: money(user.totalEarnings),
+                subtitle: 'Lifetime yield',
                 icon: Icons.trending_up_rounded,
+                accent: Colors.teal.shade600,
               ),
             ),
           ],
@@ -133,19 +139,21 @@ class _StatsSection extends StatelessWidget {
           children: [
             Expanded(
               child: StatCard(
-                title: 'Active investments',
-                value: '${user.activeInvestments}',
-                subtitle: 'Working right now',
-                icon: Icons.play_circle_fill_rounded,
+                title: 'Active items',
+                value: '${user.activeItems}',
+                subtitle: 'In custody',
+                icon: Icons.inventory_2_rounded,
+                accent: Colors.green.shade600,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: StatCard(
-                title: 'Completed loans',
-                value: '${user.completedLoans}',
-                subtitle: 'Fully repaid',
-                icon: Icons.check_circle_rounded,
+                title: 'Pools joined',
+                value: '${user.portfoliosJoined}',
+                subtitle: 'Backing loans',
+                icon: Icons.pie_chart_rounded,
+                accent: Colors.indigo.shade600,
               ),
             ),
           ],
@@ -155,14 +163,16 @@ class _StatsSection extends StatelessWidget {
   }
 }
 
-class _MembershipCard extends StatelessWidget {
+class _KycCard extends StatelessWidget {
   final UserProfile user;
-  const _MembershipCard({required this.user});
+  const _KycCard({required this.user});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final joined = '${user.memberSince.month}/${user.memberSince.year}';
+    final isVerified = user.kycStatus == KycStatus.verified;
+
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -170,13 +180,35 @@ class _MembershipCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Membership', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text('Identity & KYC',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.verified_user_rounded, color: Colors.green, size: 20),
+                Icon(
+                    isVerified
+                        ? Icons.verified_user_rounded
+                        : Icons.pending_rounded,
+                    color:
+                        isVerified ? Colors.green : Colors.orange,
+                    size: 20),
                 const SizedBox(width: 10),
-                Text('Member since $joined', style: theme.textTheme.bodyMedium),
+                Text(
+                    isVerified
+                        ? 'Identity verified'
+                        : 'Verification pending',
+                    style: theme.textTheme.bodyMedium),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today_rounded,
+                    color: Colors.black45, size: 18),
+                const SizedBox(width: 10),
+                Text('Member since $joined',
+                    style: theme.textTheme.bodyMedium),
               ],
             ),
           ],
@@ -187,39 +219,47 @@ class _MembershipCard extends StatelessWidget {
 }
 
 class _SettingsGroup extends StatelessWidget {
-  const _SettingsGroup({required this.onTap});
+  const _SettingsGroup({required this.onTap, required this.onLogout});
 
   final ValueChanged<String> onTap;
-
-  static const List<_SettingItem> _items = [
-    _SettingItem(Icons.security_rounded, 'Security & privacy'),
-    _SettingItem(Icons.notifications_active_rounded, 'Notifications'),
-    _SettingItem(Icons.help_outline_rounded, 'Help & support'),
-    _SettingItem(Icons.logout_rounded, 'Sign out', highlight: true),
-  ];
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
-    final tiles = _items.map((item) {
-      final highlightColor = item.highlight ? Colors.red : null;
-      return ListTile(
-        leading: Icon(item.icon, color: highlightColor),
-        title: Text(
-          item.label,
-          style: TextStyle(fontWeight: FontWeight.w600, color: highlightColor),
-        ),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => onTap(item.label),
-      );
-    });
+    final items = [
+      _SettingItem(Icons.account_balance_rounded, 'Payout settings'),
+      _SettingItem(Icons.security_rounded, 'Security & privacy'),
+      _SettingItem(Icons.notifications_active_rounded, 'Notifications'),
+      _SettingItem(Icons.description_outlined, 'Legal & terms'),
+      _SettingItem(Icons.help_outline_rounded, 'Help & support'),
+    ];
 
     return Card(
       margin: EdgeInsets.zero,
       child: Column(
-        children: ListTile.divideTiles(
-          context: context,
-          tiles: tiles,
-        ).toList(),
+        children: [
+          ...ListTile.divideTiles(
+            context: context,
+            tiles: items.map((item) => ListTile(
+                  leading: Icon(item.icon),
+                  title: Text(item.label,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => onTap(item.label),
+                )),
+          ),
+          const Divider(),
+          ListTile(
+            leading:
+                const Icon(Icons.logout_rounded, color: Colors.red),
+            title: const Text('Sign out',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600, color: Colors.red)),
+            trailing: const Icon(Icons.chevron_right_rounded,
+                color: Colors.red),
+            onTap: onLogout,
+          ),
+        ],
       ),
     );
   }
@@ -228,6 +268,5 @@ class _SettingsGroup extends StatelessWidget {
 class _SettingItem {
   final IconData icon;
   final String label;
-  final bool highlight;
-  const _SettingItem(this.icon, this.label, {this.highlight = false});
+  const _SettingItem(this.icon, this.label);
 }
