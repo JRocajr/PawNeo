@@ -403,11 +403,11 @@ class _RewardsTab extends StatelessWidget {
               const SizedBox(height: 18),
               Row(
                 children: const [
-                  Expanded(child: _RewardMetric(value: '3', label: 'Invites')), 
+                  Expanded(child: _RewardMetric(value: '3', label: 'Invites')),
                   SizedBox(width: 12),
-                  Expanded(child: _RewardMetric(value: '+0.4%', label: 'Yield boost')), 
+                  Expanded(child: _RewardMetric(value: '+0.4%', label: 'Yield boost')),
                   SizedBox(width: 12),
-                  Expanded(child: _RewardMetric(value: '$25', label: 'Credit')),
+                  Expanded(child: _RewardMetric(value: '\$25', label: 'Credit')),
                 ],
               ),
               const SizedBox(height: 18),
