@@ -32,23 +32,41 @@ class _PawneoAppState extends State<PawneoApp> {
 
   @override
   Widget build(BuildContext context) {
+    final child = _loggedIn
+        ? _MainShell(onLogout: _logout)
+        : _showRegister
+            ? RegisterPage(
+                onRegister: _login,
+                onGoToLogin: () => setState(() => _showRegister = false),
+              )
+            : LoginPage(
+                onLogin: _login,
+                onGoToRegister: () => setState(() => _showRegister = true),
+              );
+
     return MaterialApp(
       title: 'Pawneo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: _loggedIn
-          ? _MainShell(onLogout: _logout)
-          : _showRegister
-              ? RegisterPage(
-                  onRegister: _login,
-                  onGoToLogin: () =>
-                      setState(() => _showRegister = false),
-                )
-              : LoginPage(
-                  onLogin: _login,
-                  onGoToRegister: () =>
-                      setState(() => _showRegister = true),
-                ),
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 420),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final offset = Tween<Offset>(
+            begin: const Offset(0.04, 0.02),
+            end: Offset.zero,
+          ).animate(animation);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(position: offset, child: child),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey('${_loggedIn}_${_showRegister}'),
+          child: child,
+        ),
+      ),
     );
   }
 }
@@ -78,7 +96,24 @@ class _MainShellState extends State<_MainShell> {
 
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: _index, children: pages),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.985, end: 1).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(_index),
+          child: pages[_index],
+        ),
+      ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
         child: DecoratedBox(
@@ -87,9 +122,10 @@ class _MainShellState extends State<_MainShell> {
             borderRadius: BorderRadius.circular(28),
             boxShadow: const [
               BoxShadow(
-                  color: Color(0x14233266),
-                  blurRadius: 30,
-                  offset: Offset(0, 18)),
+                color: Color(0x14233266),
+                blurRadius: 30,
+                offset: Offset(0, 18),
+              ),
             ],
           ),
           child: ClipRRect(
@@ -97,8 +133,7 @@ class _MainShellState extends State<_MainShell> {
             child: NavigationBar(
               backgroundColor: Colors.transparent,
               selectedIndex: _index,
-              onDestinationSelected: (i) =>
-                  setState(() => _index = i),
+              onDestinationSelected: (i) => setState(() => _index = i),
               destinations: const [
                 NavigationDestination(
                   icon: Icon(Icons.home_outlined),
@@ -111,14 +146,14 @@ class _MainShellState extends State<_MainShell> {
                   label: 'Items',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.add_box_outlined),
-                  selectedIcon: Icon(Icons.add_box_rounded),
-                  label: 'Add',
+                  icon: Icon(Icons.center_focus_strong_rounded),
+                  selectedIcon: Icon(Icons.camera_alt_rounded),
+                  label: 'Scan',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.pie_chart_outline),
-                  selectedIcon: Icon(Icons.pie_chart),
-                  label: 'Portfolios',
+                  icon: Icon(Icons.map_outlined),
+                  selectedIcon: Icon(Icons.map_rounded),
+                  label: 'Pools',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.person_outline),
